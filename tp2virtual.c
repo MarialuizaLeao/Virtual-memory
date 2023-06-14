@@ -61,12 +61,12 @@ int main(int argc, char* argv[]){
         page->changed = false;
         page->next = page;
         page->prev = page;
-        printList();
+        //printList();
         if(tolower(rw) == 'w'){
             t_page *aux = searchPage(page);
             page->changed = true;
             if(aux != NULL){ // if page is already in memory and we're using LRU
-                    if(alg == "lru"){
+                    if(strcmp(alg, "lru") == 0){
                         LRUAlreadyInList(page, aux->prev, aux->next); // update the LRU list
                     }
                 }
@@ -79,7 +79,7 @@ int main(int argc, char* argv[]){
             if(tolower(rw) == 'r'){
                 t_page *aux = searchPage(page);
                 if(aux != NULL){ // if page is already in memory and we're using LRU
-                    if(alg == "lru"){
+                    if(strcmp(alg, "lru") == 0){
                         LRUAlreadyInList(page, aux->prev, aux->next); // update the LRU list
                     }
                 }
@@ -93,6 +93,7 @@ int main(int argc, char* argv[]){
                 return 1;
             }
         }
+        //printList();
     }
     fclose(file);
     printf("\nExecutando o simulador...\n");
@@ -107,8 +108,8 @@ int main(int argc, char* argv[]){
 }
 
 void LRUAlreadyInList(t_page *page, t_page *prev, t_page *next){
-    if(prev->id != list->head->id){ // if the page is not the head of the list
-        if(next->id != list->tail->id){ // if the page is not the tail of the list
+    if(page->id != list->head->id){ // if the page is not the head of the list
+        if(page->id != list->tail->id){ // if the page is not the tail of the list
             prev->next = next;
             next->prev = prev;
         }
@@ -203,8 +204,6 @@ void FIFO(t_page *page){
         list->tail = aux1;
         page->next = aux2; // add page to the head of the list
         list->head = page;
-        free(aux1);
-        free(aux2);
         
     }
     else{ // if there is space in memory
