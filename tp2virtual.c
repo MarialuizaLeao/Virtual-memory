@@ -34,7 +34,7 @@ void addNewPage(t_page *page, char alg[]);
 void printList(){
     t_page *aux = list->head;
     for(int i = 0; i < list->size; i++){
-        printf("%x \n", aux->id);
+        printf("%x     %x       %x     %d\n", aux->prev->id, aux->id, aux->next->id, aux->ref);
         aux = aux->next;
     }
     printf("\n ------------------------------------\n");
@@ -93,7 +93,7 @@ int main(int argc, char* argv[]){
                 return 1;
             }
         }
-        //printList();
+        printList();
     }
     fclose(file);
     printf("\nExecutando o simulador...\n");
@@ -154,6 +154,47 @@ void LRU(t_page *page){
     }
 }
 
+void addToList(t_page *page){
+    if(list->size == 0){
+        list->head = page;
+        list->tail = page;
+    }
+    else if(list->size == 1){
+        list->head = page;
+        list->head->next = list->tail;
+        list->head->prev = list->tail;
+        list->tail->next = list->head;
+        list->tail->prev = list->head;
+    }
+    else{
+        t_page* aux = list->head;
+        aux->prev = page;
+        page->next = aux; // add page to the head of the list
+        list->head = page;
+        list->head->prev = list->tail;
+        list->tail->next = list->head; 
+    }
+}
+
+void removeElement(t_page *page){
+    if(page->id == list->head->id){ // if the page is the head of the list
+        list->head = page->next;
+        list->head->prev = list->tail;
+        list->tail->next = list->head;
+    }
+    else if(page->id == list->tail->id){ // if the page is the tail of the list
+        list->tail = page->prev;
+        list->tail->next = list->head;
+        list->head->prev = list->tail;
+    }
+    else{ // if the page is in the middle of the list
+     printf("Deletar page id: %x\n", page->id);
+        t_page *aux1 = page->prev, *aux2 = page->next;
+        aux1->next = aux2;
+        aux2->prev = aux1;
+    }
+}
+
 void secondChance(t_page *page){
     if(list->size == numFrames){ // if there is no space in memory
         t_page *aux1 = list->tail, *aux2 = list->head;
@@ -162,35 +203,23 @@ void secondChance(t_page *page){
             diskAccess++;
         }
         while(!found){
-            if(aux1->ref == 0){
+            if(aux1->ref == false){
+                printf("%x tava como false, ent vamos remover", aux1->id);
                 found = true;
             }
             else{
-                aux1->ref = 0;
+                printf("%x tava como true, ent vamos colocar como false e passar para %x", aux1->id, aux1->prev->id);
+                aux1->ref = false;
                 aux1 = aux1->prev;
             }
         }
-        aux1->next->prev = aux1->prev; // remove aux1 from memory
-        aux1->prev->next = aux1->next;
-        page->next = aux2; // add page to the head of the list
-        list->head = page;
-        list->head->prev = list->tail;
-        list->tail->next = list->head;
+        printf("Vamos remover age id: %x\n", aux1->id);
+        removeElement(aux1);
+        addToList(page);
     }
     else{ // if there is space in memory
-        if(list->size == 0){
-            list->head = page;
-            list->tail = page;
-            list->size++;
-        }
-        else{
-            t_page* aux = list->head;
-            page->next = aux; // add page to the head of the list
-            list->head = page;
-            list->head->prev = list->tail;
-            list->tail->next = list->head; 
-            list->size++;
-        }
+        addToList(page);
+        list->size++;
     }
 }
 
@@ -243,6 +272,7 @@ t_page* searchPage(t_page *page){
         count++;
     }
     if(aux->id == page->id){
+        aux->ref = true;
         return aux;
     }
     else{
