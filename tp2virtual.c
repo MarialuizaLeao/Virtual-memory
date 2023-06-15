@@ -15,13 +15,12 @@ typedef struct t_page{
 typedef struct{
     t_page *head;
     t_page *tail;
+    t_page *current;
     int size;
 }t_list;
 
-
 int numFrames, numMemAccess = 0, numPageFaults = 0, diskAccess = 0;
 t_list *list;
-
 
 void FIFO(t_page *page);
 void secondChance(t_page *page);
@@ -69,6 +68,10 @@ int main(int argc, char* argv[]){
                     if(strcmp(alg, "lru") == 0){
                         LRUAlreadyInList(page, aux->prev, aux->next); // update the LRU list
                     }
+                    if(strcmp(alg, "2a") == 0){
+                        list->current = aux->prev;
+                        printf("current: %x\n", list->current->id);
+                    }
                 }
             else{
                 addNewPage(page, alg); // add page to memory
@@ -81,6 +84,10 @@ int main(int argc, char* argv[]){
                 if(aux != NULL){ // if page is already in memory and we're using LRU
                     if(strcmp(alg, "lru") == 0){
                         LRUAlreadyInList(page, aux->prev, aux->next); // update the LRU list
+                    }
+                    if(strcmp(alg, "2a") == 0){
+                        list->current = aux->prev;
+                        printf("current: %x\n", list->current->id);
                     }
                 }
                 else{
@@ -155,24 +162,27 @@ void LRU(t_page *page){
 }
 
 void addToList(t_page *page){
-    if(list->size == 0){
+    if(list->size == 0){ // if the list is empty
         list->head = page;
         list->tail = page;
+        list->current = list->tail;
     }
-    else if(list->size == 1){
+    else if(list->size == 1){ // if the list has only one element
         list->head = page;
         list->head->next = list->tail;
         list->head->prev = list->tail;
         list->tail->next = list->head;
         list->tail->prev = list->head;
+        list->current = list->tail;
     }
     else{
         t_page* aux = list->head;
         aux->prev = page;
-        page->next = aux; // add page to the head of the list
+        page->next = aux;
         list->head = page;
         list->head->prev = list->tail;
         list->tail->next = list->head; 
+        list->current = list->tail;
     }
 }
 
@@ -188,7 +198,6 @@ void removeElement(t_page *page){
         list->head->prev = list->tail;
     }
     else{ // if the page is in the middle of the list
-     printf("Deletar page id: %x\n", page->id);
         t_page *aux1 = page->prev, *aux2 = page->next;
         aux1->next = aux2;
         aux2->prev = aux1;
@@ -197,25 +206,23 @@ void removeElement(t_page *page){
 
 void secondChance(t_page *page){
     if(list->size == numFrames){ // if there is no space in memory
-        t_page *aux1 = list->tail, *aux2 = list->head;
+        t_page *aux1 = list->current;
         bool found = false;
         if(aux1->changed){ // if the page was changed
             diskAccess++;
         }
         while(!found){
             if(aux1->ref == false){
-                printf("%x tava como false, ent vamos remover", aux1->id);
                 found = true;
+                aux1->id = page->id;
+                aux1->ref = true;
+                list->current = aux1->prev;
             }
             else{
-                printf("%x tava como true, ent vamos colocar como false e passar para %x", aux1->id, aux1->prev->id);
                 aux1->ref = false;
                 aux1 = aux1->prev;
             }
         }
-        printf("Vamos remover age id: %x\n", aux1->id);
-        removeElement(aux1);
-        addToList(page);
     }
     else{ // if there is space in memory
         addToList(page);
@@ -229,26 +236,13 @@ void FIFO(t_page *page){
         if(aux1->changed){ // if the page was changed
             diskAccess++;
         }
-        aux1->next = NULL; // remove the last page from memory
-        list->tail = aux1;
-        page->next = aux2; // add page to the head of the list
-        list->head = page;
+        removeElement(aux1);
+        addToList(page);
         
     }
     else{ // if there is space in memory
-        if(list->size == 0){
-            list->head = page;
-            list->tail = page;
-            list->size++;
-        }
-        else{
-            t_page* aux = list->head;
-            page->next = aux; // add page to the head of the list
-            list->head = page;
-            list->head->prev = list->tail;
-            list->tail->next = list->head; 
-            list->size++;
-        }
+        addToList(page);
+        list->size++;
     }
 }
 
