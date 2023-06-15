@@ -77,13 +77,13 @@ int main(int argc, char* argv[]){
             t_page *aux = searchPage(page);
             page->changed = true;
             if(aux != NULL){ // if page is already in memory and we're using LRU
-                    if(strcmp(alg, "lru") == 0){
-                        LRUAlreadyInList(page, aux->prev, aux->next); // update the LRU list
-                    }
-                    if(strcmp(alg, "2a") == 0){
-                        list->current = aux->prev;
-                    }
+                if(strcmp(alg, "lru") == 0){
+                    LRUAlreadyInList(page, aux->prev, aux->next); // update the LRU list
                 }
+                if(strcmp(alg, "2a") == 0){
+                    list->current = aux->prev;
+                }
+            }
             else{
                 addNewPage(page, alg); // add page to memory
                 numPageFaults++;
@@ -92,6 +92,9 @@ int main(int argc, char* argv[]){
         else{
             if(tolower(rw) == 'r'){
                 t_page *aux = searchPage(page);
+                if(aux != NULL && aux->changed){
+                    page->changed = true;
+                }
                 if(aux != NULL){ // if page is already in memory and we're using LRU
                     if(strcmp(alg, "lru") == 0){
                         LRUAlreadyInList(page, aux->prev, aux->next); // update the LRU list
@@ -169,7 +172,7 @@ void LRU(t_page *page){
             aux->prev = page;
             list->head = page;
             list->head->prev = list->tail;
-            list->tail->next = list->head; 
+            list->tail->next = list->head;
             list->size++;
         }
     }
@@ -262,12 +265,23 @@ void FIFO(t_page *page){
 }
 
 void randomAlg(t_page *page){
-    int index = rand() % list->size;
-    t_page *aux = list->head;
-    for(int i = 0; i < index; i++){
-        aux = aux->next;
+    if(list->size == numFrames){ // if there is no space in memory
+        int index = rand() % list->size;
+        t_page *aux = list->head;
+        for(int i = 0; i < index; i++){
+            aux = aux->next;
+        }
+        if(aux->changed){ // if the page was changed
+            diskAccess++;
+        }
+        aux->id = page->id;
+        aux->ref = true;
+        aux->changed = page->changed;
     }
-    strcpy(aux->id, page->id);
+    else{ // if there is space in memory
+        addToList(page);
+        list->size++;
+    }
 }
 
 t_page* searchPage(t_page *page){
