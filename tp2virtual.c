@@ -29,6 +29,7 @@ void LRUAlreadyInList(t_page *page, t_page *prev, t_page *next);
 void randomAlg(t_page *page);
 t_page* searchPage(t_page *page);
 void addNewPage(t_page *page, char alg[]);
+int findS(int PageSize);
 
 void printList(){
     t_page *aux = list->head;
@@ -39,6 +40,16 @@ void printList(){
     printf("\n ------------------------------------\n");
 }
 
+int findS(int PageSize){
+    int s = 0;
+    int temp = PageSize * 1024;
+    while(temp > 1){
+        temp = temp >> 1;
+        s++;
+    }
+    return s;
+}
+
 
 int main(int argc, char* argv[]){
     FILE *file;
@@ -46,6 +57,8 @@ int main(int argc, char* argv[]){
     file = fopen(argv[2], "r");
     int pageSize = atoi(argv[3]), memSize = atoi(argv[4]);
     numFrames = memSize/pageSize;
+    int s = findS(pageSize);
+
     list = malloc(sizeof(t_list));
     list->head = NULL;
     list->tail = NULL;
@@ -55,12 +68,11 @@ int main(int argc, char* argv[]){
     while(fscanf(file, "%x %c", &addr, &rw) != -1){
         numMemAccess++;
         t_page *page = malloc(sizeof(t_page));
-        page->id = addr;
+        page->id = addr >> s;
         page->ref = true;
         page->changed = false;
         page->next = page;
         page->prev = page;
-        //printList();
         if(tolower(rw) == 'w'){
             t_page *aux = searchPage(page);
             page->changed = true;
@@ -70,7 +82,6 @@ int main(int argc, char* argv[]){
                     }
                     if(strcmp(alg, "2a") == 0){
                         list->current = aux->prev;
-                        printf("current: %x\n", list->current->id);
                     }
                 }
             else{
@@ -87,7 +98,7 @@ int main(int argc, char* argv[]){
                     }
                     if(strcmp(alg, "2a") == 0){
                         list->current = aux->prev;
-                        printf("current: %x\n", list->current->id);
+                        //printf("current: %x\n", list->current->id);
                     }
                 }
                 else{
@@ -124,7 +135,8 @@ void LRUAlreadyInList(t_page *page, t_page *prev, t_page *next){
             list->tail = prev; // new tail is the previous page's prev
         }
         t_page* aux = list->head;
-        page->next = aux; // add page to the head of the list
+        page->next = aux;
+        aux->prev = page; // add page to the head of the list
         list->head = page;
         list->tail->next = list->head;
         list->head->prev = list->tail;
@@ -138,21 +150,28 @@ void LRU(t_page *page){
             diskAccess++;
         }
         aux2->prev = page;
-        page->next = aux2; // add page to the head of the list
+        page->next = aux2;
+        page->prev = aux1;
+        aux1->prev->next = page;
+        aux1->next = page; // add page to the head of the list
         list->head = page;
-        list->head = page;
+        list->tail = aux1->prev;
         list->head->prev = list->tail;
-        list->tail->next = list->head;
     }
     else{ // if there is space in memory
+        //printf("Tem espaco na memoria\n");
         if(list->size == 0){
             list->head = page;
             list->tail = page;
             list->size++;
         }
         else{
+            //printf("Adicionando %x\n", page->id);
+            //printList();
             t_page* aux = list->head;
             page->next = aux; // add page to the head of the list
+            page->prev = list->tail;
+            aux->prev = page;
             list->head = page;
             list->head->prev = list->tail;
             list->tail->next = list->head; 
