@@ -98,7 +98,6 @@ int main(int argc, char* argv[]){
                     }
                     if(strcmp(alg, "2a") == 0){
                         list->current = aux->prev;
-                        //printf("current: %x\n", list->current->id);
                     }
                 }
                 else{
@@ -111,7 +110,6 @@ int main(int argc, char* argv[]){
                 return 1;
             }
         }
-        printList();
     }
     fclose(file);
     printf("\nExecutando o simulador...\n");
@@ -121,7 +119,7 @@ int main(int argc, char* argv[]){
 	printf("Numero de paginas: %i\n", numFrames);
 	printf("Numero de acessos à memória: %i\n", numMemAccess);
 	printf("Page fault: %i\n", numPageFaults);
-	printf("Numero de acessos ao disco: %i\n", diskAccess);
+	printf("Escritas no disco: %i\n", diskAccess);
 
 }
 
@@ -159,15 +157,12 @@ void LRU(t_page *page){
         list->head->prev = list->tail;
     }
     else{ // if there is space in memory
-        //printf("Tem espaco na memoria\n");
         if(list->size == 0){
             list->head = page;
             list->tail = page;
             list->size++;
         }
         else{
-            //printf("Adicionando %x\n", page->id);
-            //printList();
             t_page* aux = list->head;
             page->next = aux; // add page to the head of the list
             page->prev = list->tail;
@@ -227,14 +222,15 @@ void secondChance(t_page *page){
     if(list->size == numFrames){ // if there is no space in memory
         t_page *aux1 = list->current;
         bool found = false;
-        if(aux1->changed){ // if the page was changed
-            diskAccess++;
-        }
         while(!found){
             if(aux1->ref == false){
+                if(aux1->changed){ // if the page was changed
+                    diskAccess++;
+                }
                 found = true;
                 aux1->id = page->id;
                 aux1->ref = true;
+                aux1->changed = page->changed;
                 list->current = aux1->prev;
             }
             else{
@@ -294,7 +290,6 @@ t_page* searchPage(t_page *page){
 }
 
 void addNewPage(t_page *page, char alg[]){
-    diskAccess++;
     if(strcmp(alg, "lru") == 0){
         LRU(page);
     }
