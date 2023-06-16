@@ -12,7 +12,7 @@ typedef struct t_page{
     bool changed;
 }t_page;
 
-typedef struct{
+typedef struct t_list{
     t_page *head;
     t_page *tail;
     t_page *current;
@@ -50,7 +50,6 @@ int findS(int PageSize){
     return s;
 }
 
-
 int main(int argc, char* argv[]){
     FILE *file;
     char *alg = argv[1];
@@ -73,46 +72,33 @@ int main(int argc, char* argv[]){
         page->changed = false;
         page->next = page;
         page->prev = page;
+
+        t_page *aux = searchPage(page);
         if(tolower(rw) == 'w'){
-            t_page *aux = searchPage(page);
             page->changed = true;
-            if(aux != NULL){ // if page is already in memory and we're using LRU
-                if(strcmp(alg, "lru") == 0){
-                    LRUAlreadyInList(page, aux->prev, aux->next); // update the LRU list
-                }
-                if(strcmp(alg, "2a") == 0){
-                    list->current = aux->prev;
-                }
-            }
-            else{
-                addNewPage(page, alg); // add page to memory
-                numPageFaults++;
+        }
+        else if(tolower(rw) == 'r'){
+            if(aux != NULL && aux->changed){
+                page->changed = true;
             }
         }
         else{
-            if(tolower(rw) == 'r'){
-                t_page *aux = searchPage(page);
-                if(aux != NULL && aux->changed){
-                    page->changed = true;
-                }
-                if(aux != NULL){ // if page is already in memory and we're using LRU
-                    if(strcmp(alg, "lru") == 0){
-                        LRUAlreadyInList(page, aux->prev, aux->next); // update the LRU list
-                    }
-                    if(strcmp(alg, "2a") == 0){
-                        list->current = aux->prev;
-                    }
-                }
-                else{
-                    addNewPage(page, alg); // add page to memory
-                    numPageFaults++;
-                }
+            printf("Error: invalid read/write\n");
+            return 1;
+        }
+        if(aux != NULL){ // if page is already in memory
+            if(strcmp(alg, "lru") == 0){ // if we're using LRU
+                LRUAlreadyInList(page, aux->prev, aux->next); // update the LRU list
             }
-            else{
-                printf("Error: invalid read/write\n");
-                return 1;
+            if(strcmp(alg, "2a") == 0){ // if we're using 2a
+                list->current = aux->prev; // update the current page
             }
         }
+        else{ // if page is not in memory
+            addNewPage(page, alg); // add page to memory
+            numPageFaults++;
+        }
+
     }
     fclose(file);
     printf("\nExecutando o simulador...\n");
@@ -123,62 +109,9 @@ int main(int argc, char* argv[]){
 	printf("Numero de acessos à memória: %i\n", numMemAccess);
 	printf("Page fault: %i\n", numPageFaults);
 	printf("Escritas no disco: %i\n", diskAccess);
-
 }
 
-void LRUAlreadyInList(t_page *page, t_page *prev, t_page *next){
-    if(page->id != list->head->id){ // if the page is not the head of the list
-        if(page->id != list->tail->id){ // if the page is not the tail of the list
-            prev->next = next;
-            next->prev = prev;
-        }
-        else{ // if the page is the tail of the list
-            list->tail = prev; // new tail is the previous page's prev
-        }
-        t_page* aux = list->head;
-        page->next = aux;
-        aux->prev = page; // add page to the head of the list
-        list->head = page;
-        list->tail->next = list->head;
-        list->head->prev = list->tail;
-    }
-}
-
-void LRU(t_page *page){
-    if(list->size == numFrames){ // if there is no space in memory
-        t_page *aux1 = list->tail, *aux2 = list->head;
-        if(aux1->changed){ // if the page was changed
-            diskAccess++;
-        }
-        aux2->prev = page;
-        page->next = aux2;
-        page->prev = aux1;
-        aux1->prev->next = page;
-        aux1->next = page; // add page to the head of the list
-        list->head = page;
-        list->tail = aux1->prev;
-        list->head->prev = list->tail;
-    }
-    else{ // if there is space in memory
-        if(list->size == 0){
-            list->head = page;
-            list->tail = page;
-            list->size++;
-        }
-        else{
-            t_page* aux = list->head;
-            page->next = aux; // add page to the head of the list
-            page->prev = list->tail;
-            aux->prev = page;
-            list->head = page;
-            list->head->prev = list->tail;
-            list->tail->next = list->head;
-            list->size++;
-        }
-    }
-}
-
-void addToList(t_page *page){
+void addElement(t_page *page){
     if(list->size == 0){ // if the list is empty
         list->head = page;
         list->tail = page;
@@ -203,47 +136,63 @@ void addToList(t_page *page){
     }
 }
 
-void removeElement(t_page *page){
-    if(page->id == list->head->id){ // if the page is the head of the list
-        list->head = page->next;
-        list->head->prev = list->tail;
-        list->tail->next = list->head;
+void removeElement(){
+    list->tail = list->tail->prev;
+    list->tail->next = list->head;
+    list->head->prev = list->tail;
+}
+
+void LRUAlreadyInList(t_page *page, t_page *prev, t_page *next){
+    if(page->id != list->head->id){ // if the page is not the head of the list
+        if(page->id != list->tail->id){ // if the page is not the tail of the list
+            prev->next = next;
+            next->prev = prev;
+        }
+        else{ // if the page is the tail of the list
+            list->tail = prev; // new tail is the previous page's prev
+        }
+        addElement(page);
     }
-    else if(page->id == list->tail->id){ // if the page is the tail of the list
-        list->tail = page->prev;
-        list->tail->next = list->head;
-        list->head->prev = list->tail;
+}
+
+void LRU(t_page *page){
+    if(list->size == numFrames){ // if there is no space in memory
+        t_page *aux1 = list->tail, *aux2 = list->head;
+        if(aux1->changed){ // if the page was changed
+            diskAccess++;
+        }
+        removeElement();
+        addElement(page);
     }
-    else{ // if the page is in the middle of the list
-        t_page *aux1 = page->prev, *aux2 = page->next;
-        aux1->next = aux2;
-        aux2->prev = aux1;
+    else{ // if there is space in memory
+        addElement(page);
+        list->size++;
     }
 }
 
 void secondChance(t_page *page){
     if(list->size == numFrames){ // if there is no space in memory
-        t_page *aux1 = list->current;
+        t_page *aux = list->current;
         bool found = false;
         while(!found){
-            if(aux1->ref == false){
-                if(aux1->changed){ // if the page was changed
+            if(aux->ref == false){
+                if(aux->changed){ // if the page was changed
                     diskAccess++;
                 }
                 found = true;
-                aux1->id = page->id;
-                aux1->ref = true;
-                aux1->changed = page->changed;
-                list->current = aux1->prev;
+                aux->id = page->id;
+                aux->ref = true;
+                aux->changed = page->changed;
+                list->current = aux->prev;
             }
             else{
-                aux1->ref = false;
-                aux1 = aux1->prev;
+                aux->ref = false;
+                aux = aux->prev;
             }
         }
     }
     else{ // if there is space in memory
-        addToList(page);
+        addElement(page);
         list->size++;
     }
 }
@@ -254,12 +203,12 @@ void FIFO(t_page *page){
         if(aux1->changed){ // if the page was changed
             diskAccess++;
         }
-        removeElement(aux1);
-        addToList(page);
+        removeElement();
+        addElement(page);
         
     }
     else{ // if there is space in memory
-        addToList(page);
+        addElement(page);
         list->size++;
     }
 }
@@ -279,11 +228,12 @@ void randomAlg(t_page *page){
         aux->changed = page->changed;
     }
     else{ // if there is space in memory
-        addToList(page);
+        addElement(page);
         list->size++;
     }
 }
 
+// Returns the page if it is in memory, NULL otherwise
 t_page* searchPage(t_page *page){
     if(list->size == 0){
         return NULL;
