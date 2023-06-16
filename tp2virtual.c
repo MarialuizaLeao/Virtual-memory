@@ -27,9 +27,14 @@ void secondChance(t_page *page);
 void LRU(t_page *page);
 void LRUAlreadyInList(t_page *page, t_page *prev, t_page *next);
 void randomAlg(t_page *page);
+
 t_page* searchPage(t_page *page);
 void addNewPage(t_page *page, char alg[]);
+void updatePage(t_page *page, char alg[]);
 int findS(int PageSize);
+
+void removeElement();
+void addElement(t_page *page);
 
 void printList(){
     t_page *aux = list->head;
@@ -87,12 +92,9 @@ int main(int argc, char* argv[]){
             return 1;
         }
         if(aux != NULL){ // if page is already in memory
-            if(strcmp(alg, "lru") == 0){ // if we're using LRU
-                LRUAlreadyInList(page, aux->prev, aux->next); // update the LRU list
-            }
-            if(strcmp(alg, "2a") == 0){ // if we're using 2a
-                list->current = aux->prev; // update the current page
-            }
+            page->prev = aux->prev;
+            page->next = aux->next;
+            updatePage(page, alg);
         }
         else{ // if page is not in memory
             addNewPage(page, alg); // add page to memory
@@ -157,8 +159,7 @@ void LRUAlreadyInList(t_page *page, t_page *prev, t_page *next){
 
 void LRU(t_page *page){
     if(list->size == numFrames){ // if there is no space in memory
-        t_page *aux1 = list->tail, *aux2 = list->head;
-        if(aux1->changed){ // if the page was changed
+        if(list->tail->changed){ // if the page was changed
             diskAccess++;
         }
         removeElement();
@@ -199,8 +200,7 @@ void secondChance(t_page *page){
 
 void FIFO(t_page *page){
     if(list->size == numFrames){ // if there is no space in memory
-        t_page *aux1 = list->tail, *aux2 = list->head;
-        if(aux1->changed){ // if the page was changed
+        if(list->tail->changed){ // if the page was changed
             diskAccess++;
         }
         removeElement();
@@ -268,5 +268,14 @@ void addNewPage(t_page *page, char alg[]){
     }
     else{
         printf("Error: invalid algorithm\n");
+    }
+}
+
+void updatePage(t_page *page, char alg[]){
+    if(strcmp(alg, "lru") == 0){ // if we're using LRU
+        LRUAlreadyInList(page, page->prev, page->next); // update the LRU list
+    }
+    if(strcmp(alg, "2a") == 0){ // if we're using 2a
+        list->current = page->prev; // update the current page
     }
 }

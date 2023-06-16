@@ -1,6 +1,6 @@
 #!/bin/bash
 
-algorithms=("lru" "2a" "fifo")
+algorithms=("lru" "2a" "fifo" "random")
 filenames=("compilador" "compressor" "matriz" "simulador")
 sizes=("2" "4")
 buffers=("128" "16384")
@@ -17,8 +17,8 @@ do
       for buffer in "${buffers[@]}"
       do
         output_file="${algorithm}_${filename}_${size}_${buffer}.txt"
-        echo "Running ./main $algorithm $filename.log $size $buffer"
-        ./main $algorithm $filename.log $size $buffer > ./gen/$output_file
+        echo "Running ./tp2virtual $algorithm $filename.log $size $buffer"
+        ./tp2virtual $algorithm $filename.log $size $buffer > ./gen/$output_file
         echo "Output saved in $output_file"
         echo ""
       done
