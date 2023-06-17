@@ -69,7 +69,7 @@ int main(int argc, char* argv[]){
     list->head = NULL;
     list->tail = NULL;
     list->size = 0;
-    SecondChancePage = list->head;
+    list->current = list->head;
     unsigned addr;
     char rw;
     while(fscanf(file, "%x %c", &addr, &rw) != -1){
@@ -120,7 +120,6 @@ void addElement(t_page *page){
     if(list->size == 0){ // if the list is empty
         list->head = page;
         list->tail = page;
-        list->current = list->tail;
     }
     else if(list->size == 1){ // if the list has only one element
         list->head = page;
@@ -128,7 +127,6 @@ void addElement(t_page *page){
         list->head->prev = list->tail;
         list->tail->next = list->head;
         list->tail->prev = list->head;
-        list->current = list->tail;
     }
     else{
         t_page* aux = list->head;
@@ -137,7 +135,6 @@ void addElement(t_page *page){
         list->head = page;
         list->head->prev = list->tail;
         list->tail->next = list->head; 
-        list->current = list->tail;
     }
 }
 
@@ -176,7 +173,7 @@ void LRU(t_page *page){
 
 void secondChance(t_page *page){
     if(list->size == numFrames){ // if there is no space in memory
-        t_page *aux = SecondChancePage;
+        t_page *aux = list->current;
         bool found = false;
         while(!found){
             if(aux->ref == false){
@@ -187,20 +184,19 @@ void secondChance(t_page *page){
                 aux->id = page->id;
                 aux->ref = true;
                 aux->changed = page->changed;
-                list->current = aux->prev;
-                SecondChancePage = aux->next;
+                list->current = aux->next;
             }
             else{
                 aux->ref = false;
                 aux = aux->prev;
             }
-            SecondChancePage = aux;
+            list->current = aux;
         }
     }
     else{ // if there is space in memory
         addElement(page);
-        if(SecondChancePage == NULL) {
-            SecondChancePage = list->head;
+        if(list->current == NULL){
+            list->current = list->head;
         }
         list->size++;
     }
@@ -282,8 +278,5 @@ void addNewPage(t_page *page, char alg[]){
 void updatePage(t_page *page, char alg[]){
     if(strcmp(alg, "lru") == 0){ // if we're using LRU
         LRUAlreadyInList(page, page->prev, page->next); // update the LRU list
-    }
-    if(strcmp(alg, "2a") == 0){ // if we're using 2a
-        list->current = page->prev; // update the current page
     }
 }

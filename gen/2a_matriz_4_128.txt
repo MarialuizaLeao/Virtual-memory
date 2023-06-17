@@ -1,0 +1,9 @@
+
+Executando o simulador...
+Tamanho da memoria: 128KB
+Tamanho das paginas: 4KB
+Tecnica de reposicao: 2a
+Numero de paginas: 32
+Numero de acessos à memória: 1000000
+Page fault: 46636
+Escritas no disco: 7626
