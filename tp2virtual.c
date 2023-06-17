@@ -20,6 +20,7 @@ typedef struct t_list{
 }t_list;
 
 int numFrames, numMemAccess = 0, numPageFaults = 0, diskAccess = 0;
+t_page *SecondChancePage;
 t_list *list;
 
 void FIFO(t_page *page);
@@ -63,10 +64,12 @@ int main(int argc, char* argv[]){
     numFrames = memSize/pageSize;
     int s = findS(pageSize);
 
+    SecondChancePage = malloc(sizeof(t_page));
     list = malloc(sizeof(t_list));
     list->head = NULL;
     list->tail = NULL;
     list->size = 0;
+    SecondChancePage = list->head;
     unsigned addr;
     char rw;
     while(fscanf(file, "%x %c", &addr, &rw) != -1){
@@ -173,7 +176,7 @@ void LRU(t_page *page){
 
 void secondChance(t_page *page){
     if(list->size == numFrames){ // if there is no space in memory
-        t_page *aux = list->current;
+        t_page *aux = SecondChancePage;
         bool found = false;
         while(!found){
             if(aux->ref == false){
@@ -185,15 +188,20 @@ void secondChance(t_page *page){
                 aux->ref = true;
                 aux->changed = page->changed;
                 list->current = aux->prev;
+                SecondChancePage = aux->next;
             }
             else{
                 aux->ref = false;
                 aux = aux->prev;
             }
+            SecondChancePage = aux;
         }
     }
     else{ // if there is space in memory
         addElement(page);
+        if(SecondChancePage == NULL) {
+            SecondChancePage = list->head;
+        }
         list->size++;
     }
 }

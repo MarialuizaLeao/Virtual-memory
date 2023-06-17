@@ -5,5 +5,5 @@ Tamanho das paginas: 4KB
 Tecnica de reposicao: 2a
 Numero de paginas: 32
 Numero de acessos à memória: 1000000
-Page fault: 2712
-Escritas no disco: 313
+Page fault: 2119
+Escritas no disco: 303
