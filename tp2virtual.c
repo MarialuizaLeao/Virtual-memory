@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <ctype.h>
 
+// struct for the pages
 typedef struct t_page{
     unsigned id;
     struct t_page *next;
@@ -12,6 +13,7 @@ typedef struct t_page{
     bool changed;
 }t_page;
 
+// struct for the page table
 typedef struct t_list{
     t_page *head;
     t_page *tail;
@@ -20,9 +22,9 @@ typedef struct t_list{
 }t_list;
 
 int numFrames, numMemAccess = 0, numPageFaults = 0, diskAccess = 0;
-t_page *SecondChancePage;
 t_list *list;
 
+// algorithm functions
 void FIFO(t_page *page);
 void secondChance(t_page *page);
 void LRU(t_page *page);
@@ -33,19 +35,10 @@ t_page* searchPage(t_page *page);
 void addNewPage(t_page *page, char alg[]);
 void updatePage(t_page *page, char alg[]);
 int findS(int PageSize);
-
 void removeElement();
 void addElement(t_page *page);
 
-void printList(){
-    t_page *aux = list->head;
-    for(int i = 0; i < list->size; i++){
-        printf("%x     %x       %x     %d\n", aux->prev->id, aux->id, aux->next->id, aux->ref);
-        aux = aux->next;
-    }
-    printf("\n ------------------------------------\n");
-}
-
+// find the number of bits for the offset
 int findS(int PageSize){
     int s = 0;
     int temp = PageSize * 1024;
@@ -57,14 +50,14 @@ int findS(int PageSize){
 }
 
 int main(int argc, char* argv[]){
+    // initialize parameters
     FILE *file;
     char *alg = argv[1];
     file = fopen(argv[2], "r");
     int pageSize = atoi(argv[3]), memSize = atoi(argv[4]);
     numFrames = memSize/pageSize;
     int s = findS(pageSize);
-
-    SecondChancePage = malloc(sizeof(t_page));
+    // alocate memory for the list and initialize it
     list = malloc(sizeof(t_list));
     list->head = NULL;
     list->tail = NULL;
@@ -72,6 +65,7 @@ int main(int argc, char* argv[]){
     list->current = list->head;
     unsigned addr;
     char rw;
+    // read the file
     while(fscanf(file, "%x %c", &addr, &rw) != -1){
         numMemAccess++;
         t_page *page = malloc(sizeof(t_page));
@@ -80,14 +74,14 @@ int main(int argc, char* argv[]){
         page->changed = false;
         page->next = page;
         page->prev = page;
-
+        // check if the page is already in memory
         t_page *aux = searchPage(page);
         if(tolower(rw) == 'w'){
-            page->changed = true;
+            page->changed = true; // if the page was written, it was changed
         }
         else if(tolower(rw) == 'r'){
             if(aux != NULL && aux->changed){
-                page->changed = true;
+                page->changed = true; // if the page was read and changed, it was changed
             }
         }
         else{
@@ -116,6 +110,7 @@ int main(int argc, char* argv[]){
 	printf("Escritas no disco: %i\n", diskAccess);
 }
 
+// Adds a new element to the list
 void addElement(t_page *page){
     if(list->size == 0){ // if the list is empty
         list->head = page;
@@ -138,12 +133,14 @@ void addElement(t_page *page){
     }
 }
 
+// Removes the last element of the list
 void removeElement(){
     list->tail = list->tail->prev;
     list->tail->next = list->head;
     list->head->prev = list->tail;
 }
 
+// Updates the LRU list
 void LRUAlreadyInList(t_page *page, t_page *prev, t_page *next){
     if(page->id != list->head->id){ // if the page is not the head of the list
         if(page->id != list->tail->id){ // if the page is not the tail of the list
@@ -157,6 +154,7 @@ void LRUAlreadyInList(t_page *page, t_page *prev, t_page *next){
     }
 }
 
+// Least recently used algorithm
 void LRU(t_page *page){
     if(list->size == numFrames){ // if there is no space in memory
         if(list->tail->changed){ // if the page was changed
@@ -171,6 +169,7 @@ void LRU(t_page *page){
     }
 }
 
+// Second chance algorithm
 void secondChance(t_page *page){
     if(list->size == numFrames){ // if there is no space in memory
         t_page *aux = list->current;
@@ -202,6 +201,7 @@ void secondChance(t_page *page){
     }
 }
 
+// FIFO algorithm
 void FIFO(t_page *page){
     if(list->size == numFrames){ // if there is no space in memory
         if(list->tail->changed){ // if the page was changed
@@ -217,6 +217,7 @@ void FIFO(t_page *page){
     }
 }
 
+// Random algorithm
 void randomAlg(t_page *page){
     if(list->size == numFrames){ // if there is no space in memory
         int index = rand() % list->size;
@@ -257,6 +258,7 @@ t_page* searchPage(t_page *page){
     }
 }
 
+// Adds a new page to memory
 void addNewPage(t_page *page, char alg[]){
     if(strcmp(alg, "lru") == 0){
         LRU(page);
@@ -275,6 +277,7 @@ void addNewPage(t_page *page, char alg[]){
     }
 }
 
+// Updates the page in memory
 void updatePage(t_page *page, char alg[]){
     if(strcmp(alg, "lru") == 0){ // if we're using LRU
         LRUAlreadyInList(page, page->prev, page->next); // update the LRU list
